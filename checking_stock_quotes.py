@@ -11,7 +11,6 @@ url_ru = "https://smart-lab.ru/q/shares/?utm_source=quotes"
 
 def checker():
     r = requests.get(url=url_ru, params=user_agent)
-    print(r.status_code)
     with open("ru.html", "wb") as f:
         f.write(r.content)
 
@@ -20,15 +19,12 @@ def checker():
     soup = BeautifulSoup(content, "lxml")
 
     element = soup.find_all("tr")
-    print(len(element))
     for line in range(2, len(element) + 1):
-        print(line)
         info = element[line].find_all("td")
         name = info[2].text
         ticker = info[3].text
         cost = info[7].text
-        print(name, ticker, cost)
-        print("---")
+
         save_in_db(name, ticker, cost)
 
 
@@ -44,16 +40,14 @@ def create_db():
 def save_in_db(name, ticker, cost):
     connect_db = sqlite3.connect("cost.db")
     cursor = connect_db.cursor()
-    param = f""" SELECT ticker FROM ru WHERE ticker = "{ticker}" """
-    cursor.execute(param)
+    cursor.execute(f""" SELECT ticker FROM ru WHERE ticker = "{ticker}" """)
     check = cursor.fetchone()
 
     if check is None:
         cursor.execute(""" INSERT INTO ru VALUES (?, ?, ?) """, (name, ticker, cost))
         connect_db.commit()
     else:
-        new = f""" UPDATE ru SET cost = "{cost}" WHERE ticker = "{ticker}" """
-        cursor.execute(new)
+        cursor.execute(f""" UPDATE ru SET cost = "{cost}" WHERE ticker = "{ticker}" """)
         connect_db.commit()
 
     cursor.close()
