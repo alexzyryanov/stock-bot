@@ -2,8 +2,8 @@ import openpyxl
 import sqlite3
 
 
-def create_portfolio(user):
-    file = openpyxl.load_workbook(f"{user}.xlsx")
+def create_portfolio(user_id):
+    file = openpyxl.load_workbook(f"{user_id}.xlsx")
     sheet = file['Сделки']
 
     line = sheet.max_row
@@ -13,39 +13,39 @@ def create_portfolio(user):
         count = sheet.cell(row=line, column=9)
         prise = sheet.cell(row=line, column=17)
 
-        add_in_db(user, ticker.value, operation.value, count.value, float('{:.2f}'.format(prise.value)))
+        add_in_db(user_id, ticker.value, operation.value, count.value, float('{:.2f}'.format(prise.value)))
         line -= 1
 
 
-def add_in_db(user, ticker, operation, count, prise):
-    connect_db = sqlite3.connect("user_portfolio.db")
+def add_in_db(user_id, ticker, operation, count, prise):
+    connect_db = sqlite3.connect("users.db")
     cursor = connect_db.cursor()
-    cursor.execute(f""" CREATE TABLE IF NOT EXISTS "{user}" (ticker TEXT, count INT, cost REAL) """)
+    cursor.execute(f""" CREATE TABLE IF NOT EXISTS stocks (user INT, ticker TEXT, count INT, cost REAL) """)
     connect_db.commit()
 
-    cursor.execute(f""" SELECT ticker FROM "{user}" WHERE ticker = "{ticker}" """)
+    cursor.execute(f""" SELECT ticker FROM stocks WHERE ticker = "{ticker}" AND user = "{user_id}" """)
     check = cursor.fetchone()
     if check is None:
-        cursor.execute(f""" INSERT INTO "{user}" VALUES (?, ?, ?) """, (ticker, count, prise))
+        cursor.execute(f""" INSERT INTO stocks VALUES (?, ?, ?, ?) """, (user_id, ticker, count, prise))
         connect_db.commit()
     else:
         if operation == "Покупка":
-            cursor.execute(f""" SELECT * FROM "{user}" WHERE ticker = "{ticker}" """)
+            cursor.execute(f""" SELECT * FROM stocks WHERE ticker = "{ticker}" AND user = "{user_id}" """)
             old = cursor.fetchone()
-            cursor.execute(f""" UPDATE "{user}" 
-                                SET count = "{old[1] + count}", cost = "{old[2] + prise}" 
-                                WHERE ticker = "{ticker}" """)
+            cursor.execute(f""" UPDATE stocks 
+                                SET count = "{old[2] + count}", cost = "{old[3] + prise}" 
+                                WHERE ticker = "{ticker}" AND user = "{user_id}" """)
             connect_db.commit()
         elif operation == "Продажа":
-            cursor.execute(f""" SELECT * FROM "{user}" WHERE ticker = "{ticker}" """)
+            cursor.execute(f""" SELECT * FROM stocks WHERE ticker = "{ticker}" AND user = "{user_id}" """)
             old = cursor.fetchone()
-            if old[1] - count == 0:
-                cursor.execute(f""" DELETE FROM "{user}" WHERE ticker = "{ticker}" """)
+            if old[2] - count == 0:
+                cursor.execute(f""" DELETE FROM stocks WHERE ticker = "{ticker}" AND user = "{user_id}" """)
                 connect_db.commit()
             else:
-                cursor.execute(f""" UPDATE "{user}" 
-                                    SET count = "{old[1] - count}", cost = "{old[2] - prise}" 
-                                    WHERE ticker = "{ticker}" """)
+                cursor.execute(f""" UPDATE stocks 
+                                    SET count = "{old[2] - count}", cost = "{old[3] - prise}" 
+                                    WHERE ticker = "{ticker}" AND user = "{user_id}" """)
                 connect_db.commit()
 
     cursor.close()
