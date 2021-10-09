@@ -11,13 +11,12 @@ url_ru = "https://smart-lab.ru/q/shares/?utm_source=quotes"
 
 def checker():
     r = requests.get(url=url_ru, params=user_agent)
-    print(r.status_code)
     with open("ru.html", "wb") as f:
         f.write(r.content)
 
     with open("ru.html", "rb") as f:
         content = f.read()
-    soup = BeautifulSoup(content, "lxml")
+    soup = BeautifulSoup(content, "html.parser")
 
     element = soup.find_all("tr")
     for line in range(2, len(element) + 1):
@@ -37,7 +36,6 @@ def create_db():
     connect_db.commit()
     cursor.close()
     connect_db.close()
-    print("create db")
 
 
 def save_in_db(name, ticker, cost):
@@ -49,16 +47,18 @@ def save_in_db(name, ticker, cost):
     if check is None:
         cursor.execute(""" INSERT INTO ru VALUES (?, ?, ?) """, (name, ticker, cost))
         connect_db.commit()
-        print("add in db")
     else:
         cursor.execute(f""" UPDATE ru SET cost = "{cost}" WHERE ticker = "{ticker}" """)
         connect_db.commit()
-        print("update in db")
 
     cursor.close()
     connect_db.close()
 
 
-create_db()
-checker()
-print("done")
+def update_stock():
+    create_db()
+    try:
+        checker()
+    except IndexError:
+        print("index error")
+        pass
